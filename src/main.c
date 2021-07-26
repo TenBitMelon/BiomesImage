@@ -3,6 +3,7 @@
 #include "../include/util.h"
 #include "../include/finders.h"
 #include <stdio.h>
+#include <string.h>
 
 int64_t S64(const char *s) {
   int64_t i;
@@ -28,9 +29,15 @@ int main(int argc, char **argv)
     LayerStack g;
     Layer *layer;
     if (argc > 2) {
-      setupGeneratorLargeBiomes(&g, MC_1_17, 1);
-      // Extract the desired layer.
-      layer = &g.layers[L_ZOOM_LARGE_A];
+      if (!strcmp(argv[2], "--largeBiomes")) {
+        setupGeneratorLargeBiomes(&g, MC_1_17, 1);
+        // Extract the desired layer.
+        layer = &g.layers[L_ZOOM_LARGE_A];
+      } else {
+        setupGenerator(&g, MC_1_17);
+        // Extract the desired layer.
+        layer = &g.layers[L_SHORE_16];
+      }
     } else {
       setupGenerator(&g, MC_1_17);
       // Extract the desired layer.
