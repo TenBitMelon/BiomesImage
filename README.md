@@ -10,6 +10,10 @@ Simply call the executable with the seed as the first argument.
 ```
 ./generateMapPreview -1717765983328882033
 ```
+To generate with large biomes, include another argument.
+```
+./generateMapPreview -1717765983328882033 largeBiomes
+```
 The program then outputs the rgb values of each pixel of a 128x128 image of biomes centered around the worldspawn.
 
 #### Compilation
