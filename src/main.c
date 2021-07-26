@@ -49,16 +49,12 @@ int main(int argc, char **argv)
     // Map the biomes to a color buffer and save to an image.
     biomesToImage(rgb, biomeColors, biomeIds, areaWidth, areaHeight, scale, 2);
 
-    //for(int i=0; i<imgWidth*imgHeight; i++) {
-    //  printf("%u %u %u\n", rgb[i], rgb[i+imgWidth*imgHeight], rgb[i+imgWidth*imgHeight*2]);
-    //}
-    int pixelRed = 2;
+    // Print Image RGB Values
+    for(int i=0; i<imgWidth*imgHeight; i++) {
+      printf("%d,%d,%d\n", rgb[i*3], rgb[(i*3)+1], rgb[(i*3)+2]);
+    }
 
-    rgb[pixelRed] = 255;
-    rgb[pixelRed+imgWidth*imgHeight] = 0;
-    rgb[pixelRed+imgWidth*imgHeight*2] = 0;
-
-    savePPM("biomes_at_layer.ppm", rgb, imgWidth, imgHeight);
+    // savePPM("biomes_at_layer.ppm", rgb, imgWidth, imgHeight);
 
     // Clean up.
     free(biomeIds);
