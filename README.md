@@ -1,3 +1,3 @@
 ```
-g++ src/main.cpp -o generateMapPreview -L./lib -lcubiomes -Wall
+gcc src/main.c lib/libcubiomes.a -o generateMapPreview -fwrapv -lm -Wall
 ```
