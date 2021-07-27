@@ -31,23 +31,19 @@ int main(int argc, char **argv)
     if (argc > 2) {
       if (!strcmp(argv[2], "--largeBiomes")) {
         setupGeneratorLargeBiomes(&g, MC_1_17, 1);
-        // Extract the desired layer.
-        layer = &g.layers[L_ZOOM_LARGE_A];
       } else {
         setupGenerator(&g, MC_1_17);
-        // Extract the desired layer.
-        layer = &g.layers[L_SHORE_16];
       }
     } else {
       setupGenerator(&g, MC_1_17);
-      // Extract the desired layer.
-      layer = &g.layers[L_SHORE_16];
     }
+    // Extract the desired layer.
+    layer = &g.layers[L_RIVER_MIX_4];
 
     uint64_t seed = S64(argv[1]);
     applySeed(&g, seed);
     Pos worldSpawn = getSpawn(MC_1_17, &g, NULL, seed);
-    int areaX = (worldSpawn.x / 16) - 64, areaZ = (worldSpawn.z / 16) - 64;
+    int areaX = (worldSpawn.x / 4) - 64, areaZ = (worldSpawn.z / 4) - 64;
     unsigned int areaWidth = 128, areaHeight = 128;
     unsigned int scale = 1;
     unsigned int imgWidth = areaWidth*scale, imgHeight = areaHeight*scale;
