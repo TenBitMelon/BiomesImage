@@ -25,6 +25,11 @@ int main(int argc, char **argv)
     // Initialize a color map for biomes.
     initBiomeColors(biomeColors);
 
+    setBiomeColor(biomeColors, sunflower_plains, 111, 152, 0);
+    setBiomeColor(biomeColors, deep_ocean, 43, 65, 153);
+    setBiomeColor(biomeColors, swamp, 40, 43, 21);
+    setBiomeColor(biomeColors, taiga_hills, 12, 126, 134);
+
     // Initialize a stack of biome layers.
     LayerStack g;
     if (argc > 2) {
