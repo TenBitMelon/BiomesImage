@@ -27,7 +27,6 @@ int main(int argc, char **argv)
 
     // Initialize a stack of biome layers.
     LayerStack g;
-    Layer *layer;
     if (argc > 2) {
       if (!strcmp(argv[2], "--largeBiomes")) {
         setupGeneratorLargeBiomes(&g, MC_1_17, 1);
@@ -38,7 +37,7 @@ int main(int argc, char **argv)
       setupGenerator(&g, MC_1_17);
     }
     // Extract the desired layer.
-    layer = &g.layers[L_RIVER_MIX_4];
+    Layer *layer = &g.layers[L_RIVER_MIX_4];
 
     uint64_t seed = S64(argv[1]);
     applySeed(&g, seed);
