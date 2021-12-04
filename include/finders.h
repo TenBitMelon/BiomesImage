@@ -35,7 +35,7 @@ enum StructureType
 {
     Feature, // for locations of temple generation attempts pre 1.13
     Desert_Pyramid,
-    Jungle_Pyramid,
+    Jungle_Temple, Jungle_Pyramid = Jungle_Temple,
     Swamp_Hut,
     Igloo,
     Village,
@@ -90,7 +90,8 @@ _sc IGLOO_CONFIG              = { 14357618, 32, 24, Igloo, 0};
 _sc JUNGLE_PYRAMID_CONFIG     = { 14357619, 32, 24, Jungle_Pyramid, 0};
 _sc SWAMP_HUT_CONFIG          = { 14357620, 32, 24, Swamp_Hut, 0};
 _sc OUTPOST_CONFIG            = {165745296, 32, 24, Outpost, 0};
-_sc VILLAGE_CONFIG            = { 10387312, 32, 24, Village, 0};
+_sc VILLAGE_CONFIG_117        = { 10387312, 32, 24, Village, 0};
+_sc VILLAGE_CONFIG            = { 10387312, 34, 26, Village, 0};
 _sc OCEAN_RUIN_CONFIG         = { 14357621, 20, 12, Ocean_Ruin, 0};
 _sc SHIPWRECK_CONFIG          = {165745295, 24, 20, Shipwreck, 0};
 _sc MONUMENT_CONFIG           = { 10387313, 32, 27, Monument, LARGE_STRUCT};
@@ -133,6 +134,9 @@ STRUCT(BiomeFilter)
     uint64_t oceanToFind; // all required ocean types
 
     int specialCnt; // number of special temperature categories required
+
+    // excluded biomes that shall not be present
+    uint64_t biomeToExcl, biomeToExclM;
 };
 
 STRUCT(StrongholdIter)
@@ -150,11 +154,13 @@ STRUCT(StrongholdIter)
 };
 
 
-STRUCT(VillageType)
+STRUCT(StructureVariant)
 {
     char abandoned; // is zombie village
     char variant;
-    int biome;
+    short biome;
+    char rotation; // 0:0, 1:cw90, 2:cw180, 3:cw270=ccw90
+    char sx, sy, sz;
 };
 
 
@@ -283,7 +289,7 @@ int getStructureConfig(int structureType, int mc, StructureConfig *sconf);
 
 /* The library can be compiled to use a custom internal getter for structure
  * configurations. For this, the macro STRUCT_CONFIG_OVERRIDE should be defined
- * as true and the function getStructureConfig_override() should be defined 
+ * as true and the function getStructureConfig_override() should be defined
  * with a custom function body. However, note this is experimental and not all
  * structure configs may work. (Ideally only change structure salts.)
  */
@@ -312,16 +318,16 @@ int getStructurePos(int structureType, int mc, uint64_t seed, int regX, int regZ
  * variants, which have a uniform distribution, while large structures
  * (monuments and mansions) have a triangular distribution.
  */
-static inline __attribute__((const))
+static inline ATTR(const)
 Pos getFeaturePos(StructureConfig config, uint64_t seed, int regX, int regZ);
 
-static inline __attribute__((const))
+static inline ATTR(const)
 Pos getFeatureChunkInRegion(StructureConfig config, uint64_t seed, int regX, int regZ);
 
-static inline __attribute__((const))
+static inline ATTR(const)
 Pos getLargeStructurePos(StructureConfig config, uint64_t seed, int regX, int regZ);
 
-static inline __attribute__((const))
+static inline ATTR(const)
 Pos getLargeStructureChunkInRegion(StructureConfig config, uint64_t seed, int regX, int regZ);
 
 /* Checks a chunk area, starting at (chunkX, chunkZ) with size (chunkW, chunkH)
@@ -333,7 +339,7 @@ int getMineshafts(int mc, uint64_t seed, int chunkX, int chunkZ,
         int chunkW, int chunkH, Pos *out, int nout);
 
 // not exacly a structure
-static inline __attribute__((const))
+static inline ATTR(const)
 int isSlimeChunk(uint64_t seed, int chunkX, int chunkZ)
 {
     uint64_t rnd = seed;
@@ -491,10 +497,6 @@ int scanForQuads(
 // Checking Biomes & Biome Helper Functions
 //==============================================================================
 
-/* Returns the biome for the specified block position.
- * (Alternatives should be considered first in performance critical code.)
- */
-int getBiomeAtPos(const LayerStack *g, const Pos pos);
 
 /* Get the shadow seed.
  */
@@ -507,47 +509,16 @@ static inline uint64_t getShadow(uint64_t seed)
  * This function is used to determine the positions of spawn and strongholds.
  * Warning: accurate, but slow!
  *
- * @mcversion        : Minecraft version (changed in: 1.7, 1.13)
- * @l                : entry layer with scale = 4
- * @cache            : biome buffer, set to NULL for temporary allocation
- * @centreX, centreZ : origin for the search
- * @range            : square 'radius' of the search
- * @isValid          : boolean array of valid biome ids (size = 256)
- * @seed             : seed used for the RNG
- *                     (initialise RNG using setSeed(&seed))
- * @passes           : (output) number of valid biomes passed, NULL to ignore
+ * @g           : generator for Overworld biomes
+ * @x,y,z       : origin for the search
+ * @radius      : square 'radius' of the search
+ * @validBiomes : boolean array of valid biome ids (size = 256)
+ * @rnd         : random obj, initialise using setSeed(rnd, world_seed)
+ * @passes      : (output) number of valid biomes passed, NULL to ignore
  */
-Pos findBiomePosition(
-        const int           mcversion,
-        const Layer *       l,
-        int *               cache,
-        const int           centerX,
-        const int           centerZ,
-        const int           range,
-        const char *        isValid,
-        uint64_t *          seed,
-        int *               passes
-        );
-
-/* Determines if the given area contains only biomes specified by 'biomeList'.
- * This function is used to determine the positions of villages, ocean monuments
- * and mansions.
- * Warning: accurate, but slow!
- *
- * @l          : entry layer with scale = 4: [L_RIVER_MIX_4|L13_OCEAN_MIX_4]
- * @cache      : biome buffer, set to NULL for temporary allocation
- * @posX, posZ : centre for the check
- * @radius     : 'radius' of the check area
- * @isValid    : boolean array of valid biome ids (size = 256)
- */
-int areBiomesViable(
-        const Layer *       l,
-        int *               cache,
-        const int           posX,
-        const int           posZ,
-        const int           radius,
-        const char *        isValid
-        );
+Pos locateBiome(
+        const Generator *g, int x, int y, int z, int radius,
+        const char *validBiomes, uint64_t *rng, int *passes);
 
 
 //==============================================================================
@@ -572,89 +543,51 @@ Pos initFirstStronghold(StrongholdIter *sh, int mc, uint64_t s48);
  * location, as well as the approximate location of the next stronghold.
  *
  * @sh      : stronghold iteration state, holding position info
- * @g       : generator layer stack [world seed should be applied before call!]
- * @cache   : biome buffer, set to NULL for temporary allocation
+ * @g       : generator, should be initialized for Overworld generation
  *
  * Returns the number of further strongholds after this one.
  */
-int nextStronghold(StrongholdIter *sh, const LayerStack *g, int *cache);
-
-/* deprecated - use initFirstStronghold() and nextStronghold() instead
- * Finds the block positions of the strongholds in the world. Note that the
- * number of strongholds was increased from 3 to 128 in MC 1.9.
- * Warning: Slow!
- *
- * @mcversion : Minecraft version (changed in 1.7, 1.9, 1.13)
- * @g         : generator layer stack [worldSeed should be applied before call!]
- * @cache     : biome buffer, set to NULL for temporary allocation
- * @locations : output block positions
- * @worldSeed : world seed of the generator
- * @maxSH     : Stop when this many strongholds have been found. A value of 0
- *              defaults to 3 for mcversion <= MC_1_8, and to 128 for >= MC_1_9.
- * @maxRing   : Stop after this many rings.
- *
- * Returned is the number of strongholds found.
- */
-__attribute__((deprecated))
-int findStrongholds(
-        const int           mcversion,
-        const LayerStack *  g,
-        int *               cache,
-        Pos *               locations,
-        uint64_t            worldSeed,
-        int                 maxSH,
-        int                 maxRing
-        );
+int nextStronghold(StrongholdIter *sh, const Generator *g);
 
 /* Finds the spawn point in the world.
  * Warning: Slow, and may be inaccurate because the world spawn depends on
  * grass blocks!
- *
- * @mc        : Minecraft version (changed in 1.7, 1.13)
- * @g         : generator layer stack [worldSeed should be applied before call!]
- * @cache     : biome buffer, set to NULL for temporary allocation
- * @worldSeed : world seed used for the generator
  */
-Pos getSpawn(const int mc, const LayerStack *g, int *cache, uint64_t worldSeed);
+Pos getSpawn(const Generator *g);
 
 /* Finds the approximate spawn point in the world.
- *
- * @mc        : Minecraft version (changed in 1.7, 1.13)
- * @g         : generator layer stack [worldSeed should be applied before call!]
- * @cache     : biome buffer, set to NULL for temporary allocation
- * @worldSeed : world seed used for the generator
  */
-Pos estimateSpawn(const int mc, const LayerStack *g, int *cache, uint64_t worldSeed);
+Pos estimateSpawn(const Generator *g);
 
 
 //==============================================================================
 // Validating Structure Positions
 //==============================================================================
 
-
-/* This function performs a biome check at the specified block coordinates to
- * determine whether the corresponding structure would spawn there. You can get
- * the block positions using getStructurePos().
- *
- * @structureType  : structure type to be checked
- * @mc             : minecraft version
- * @g              : generator layer stack, seed will be applied to layers
- * @seed           : world seed, will be applied to generator
- * @blockX, blockZ : block coordinates
- *
- * The return value is non-zero if the position is valid.
+/* Performs a biome check near the specified block coordinates to determine
+ * whether a structure of the given type could spawn there. You can get the
+ * block positions using getStructurePos().
+ * The generator, 'g', should be initialized for the correct MC version,
+ * dimension and seed. The generator may be temporarily modified during the
+ * function call, but will be restored upon return.
+ * The 'flags' argument is optional structure specific information, such as the
+ * biome variant for villages.
  */
-int isViableStructurePos(int structureType, int mc, LayerStack *g,
-        uint64_t seed, int blockX, int blockZ);
-
-int isViableNetherStructurePos(int structureType, int mc, NetherNoise *nn,
-        uint64_t seed, int blockX, int blockZ);
-int isViableEndStructurePos(int structureType, int mc, EndNoise *en,
-        uint64_t seed, int blockX, int blockZ);
+int isViableStructurePos(int structType, Generator *g, int blockX, int blockZ, uint32_t flags);
 
 /* Checks if the specified structure type could generate in the given biome.
  */
 int isViableFeatureBiome(int mc, int structureType, int biomeID);
+
+/* Some structures in 1.18 now only spawn if the surface is sufficiently high
+ * at all four bounding box corners. This affects primarily Desert_Pyramids,
+ * Jungle_Temples and Mansions.
+ * Currently cubiomes does not provide overworld surface height and cannot
+ * check it, but we can rule out some unlikely positions based biomes.
+ *
+ * This function is meant only for the 1.18 Overworld and is subject to change.
+ */
+int isViableStructureTerrain(int structType, Generator *g, int blockX, int blockZ);
 
 /* End Cities require a sufficiently high surface in addition to a biome check.
  * The world seed should be applied to the EndNoise and SurfaceNoise before
@@ -681,7 +614,10 @@ uint64_t chunkGenerateRnd(uint64_t worldSeed, int chunkX, int chunkZ)
     return rnd;
 }
 
-VillageType getVillageType(int mc, uint64_t seed, int blockX, int blockZ, int biomeID);
+StructureVariant getVillageType(int mc, uint64_t seed, int blockX, int blockZ, int biomeID);
+
+// For 1.18
+StructureVariant getBastionType(int mc, uint64_t seed, int blockX, int blockZ);
 
 
 /* Finds the number of each type of house that generate in a village
@@ -696,34 +632,69 @@ VillageType getVillageType(int mc, uint64_t seed, int blockX, int blockZ, int bi
 uint64_t getHouseList(uint64_t worldSeed, int chunkX, int chunkZ, int *housesOut);
 
 
+
+
 //==============================================================================
-// Seed Filters
+// Seed Filters (for versions up to 1.17)
 //==============================================================================
 
 
-/* Creates a biome filter configuration from a given list of biomes.
+/* Creates a biome filter configuration from a given list of required and
+ * excluded biomes. Biomes should not appear in both lists. Lists of length
+ * zero may be passed as null.
  */
-BiomeFilter setupBiomeFilter(const int *biomeList, int listLen);
+BiomeFilter setupBiomeFilter(
+    const int *required, int requiredLen,
+    const int *excluded, int excludedLen
+    );
 
-/* Starts to generate the specified area and checks if all biomes in the filter
- * are present. If so, the area will be fully generated inside the cache
- * (if != NULL) up to the entry 'layerID', and the return value will be > 0.
+/* Starts to generate the specified range and checks if the biomes meet the
+ * requirements of the biome filter. If so, the area will be fully generated
+ * inside the cache (if != NULL), and the return value will be > 0.
  * Otherwise, the contents of 'cache' is undefined and a value <= 0 is returned.
- * More aggressive filtering can be enabled with 'protoCheck' which may yield
+ * More aggressive filtering can be enabled with 'approx' which may yield some
  * some false negatives in exchange for speed.
  *
- * @g           : generator (will be modified!)
- * @layerID     : layer enum of generation entry point
+ * The generator should be set up for the correct version, but the dimension
+ * and seed will be applied internally. This will modify the generator into a
+ * partially initialized state that is not valid to use outside this function
+ * without re-applying a seed.
+ *
+ * @g           : biome generator
+ * @cache       : working buffer and output (nullable)
+ * @r           : range to be checked
+ * @dim         : dimension (0:Overworld, -1:Nether, +1:End)
+ * @seed        : world seed
+ * @filter      : biome requirements to be met
+ * @approx      : enables approximations with more aggressive filtering
+ * @stop        : occasional check for abort (nullable)
+ */
+int checkForBiomes(
+        Generator     * g,
+        int           * cache,
+        Range           r,
+        int             dim,
+        uint64_t        seed,
+        BiomeFilter     filter,
+        int             approx,
+        volatile char * stop // should be atomic, but is fine as stop flag
+        );
+
+/* Specialization of checkForBiomes() for a LayerStack, i.e. the Overworld up
+ * to 1.17.
+ *
+ * @ls          : layered generator (will be modified!)
+ * @entry       : generation entry point (setLayerSeed() may be applied here)
  * @cache       : working buffer, and output (if != NULL)
  * @seed        : world seed
  * @x,z,w,h     : requested area
  * @filter      : biomes to be checked for
  * @protoCheck  : enables more aggressive filtering when non-zero (MC >= 1.7)
  */
-int checkForBiomes(
-        LayerStack *    g,
-        int             layerID,
-        int *           cache,
+int checkForBiomesAtLayer(
+        LayerStack    * ls,
+        Layer         * entry,
+        int           * cache,
         uint64_t        seed,
         int             x,
         int             z,
@@ -739,7 +710,7 @@ int checkForBiomes(
  * if (tc[TEMP_CAT] <  0) avoid, there shall be no entries of this category
  * TEMP_CAT is any of:
  * Oceanic, Warm, Lush, Cold, Freeing, Special+Warm, Special+Lush, Special+Cold
- * For 1.7+ only.
+ * For 1.7-1.17 only.
  */
 int checkForTemps(LayerStack *g, uint64_t seed, int x, int z, int w, int h, const int tc[9]);
 
@@ -763,7 +734,7 @@ void genPotential(uint64_t *mL, uint64_t *mM, int layer, int mc, int id);
 //==============================================================================
 
 
-static inline __attribute__((const))
+static inline ATTR(const)
 Pos getFeatureChunkInRegion(StructureConfig config, uint64_t seed, int regX, int regZ)
 {
     /*
@@ -802,7 +773,7 @@ Pos getFeatureChunkInRegion(StructureConfig config, uint64_t seed, int regX, int
     return pos;
 }
 
-static inline __attribute__((const))
+static inline ATTR(const)
 Pos getFeaturePos(StructureConfig config, uint64_t seed, int regX, int regZ)
 {
     Pos pos = getFeatureChunkInRegion(config, seed, regX, regZ);
@@ -812,7 +783,7 @@ Pos getFeaturePos(StructureConfig config, uint64_t seed, int regX, int regZ)
     return pos;
 }
 
-static inline __attribute__((const))
+static inline ATTR(const)
 Pos getLargeStructureChunkInRegion(StructureConfig config, uint64_t seed, int regX, int regZ)
 {
     Pos pos;
@@ -842,7 +813,7 @@ Pos getLargeStructureChunkInRegion(StructureConfig config, uint64_t seed, int re
     return pos;
 }
 
-static inline __attribute__((const))
+static inline ATTR(const)
 Pos getLargeStructurePos(StructureConfig config, uint64_t seed, int regX, int regZ)
 {
     Pos pos = getLargeStructureChunkInRegion(config, seed, regX, regZ);
@@ -854,7 +825,7 @@ Pos getLargeStructurePos(StructureConfig config, uint64_t seed, int regX, int re
 
 
 
-static __attribute__((const))
+static ATTR(const)
 float getEnclosingRadius(
     int x0, int z0, int x1, int z1, int x2, int z2, int x3, int z3,
     int ax, int ay, int az, int reg, int gap)
@@ -943,7 +914,7 @@ static inline float isQuadBase(const StructureConfig sconf, uint64_t seed, int r
 }
 
 // optimised version for regionSize=32,chunkRange=24,radius=128
-static inline __attribute__((always_inline, const))
+static inline ATTR(always_inline, const)
 float isQuadBaseFeature24(const StructureConfig sconf, uint64_t seed,
         int ax, int ay, int az)
 {
@@ -995,7 +966,7 @@ float isQuadBaseFeature24(const StructureConfig sconf, uint64_t seed,
 }
 
 // variant of isQuadBaseFeature24 which finds only the classic constellations
-static inline __attribute__((always_inline, const))
+static inline ATTR(always_inline, const)
 float isQuadBaseFeature24Classic(const StructureConfig sconf, uint64_t seed)
 {
     seed += sconf.salt;
@@ -1028,7 +999,7 @@ float isQuadBaseFeature24Classic(const StructureConfig sconf, uint64_t seed)
     return 1; // should actually return one of 122.781311 or 127.887650
 }
 
-static inline __attribute__((always_inline, const))
+static inline ATTR(always_inline, const)
 float isQuadBaseFeature(const StructureConfig sconf, uint64_t seed,
         int ax, int ay, int az, int radius)
 {
@@ -1087,7 +1058,7 @@ float isQuadBaseFeature(const StructureConfig sconf, uint64_t seed,
 }
 
 
-static inline __attribute__((always_inline, const))
+static inline ATTR(always_inline, const)
 float isQuadBaseLarge(const StructureConfig sconf, uint64_t seed,
         int ax, int ay, int az, int radius)
 {
