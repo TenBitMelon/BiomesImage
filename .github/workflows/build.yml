@@ -1,4 +1,4 @@
-name: C/C++ CI
+name: Build BiomesImage
 
 on:
   push:
@@ -30,8 +30,6 @@ jobs:
     - uses: actions/checkout@v2
     - name: Compile
       run: gcc src/main.c ${{ matrix.libFolder }}/libcubiomes.a -o generateMapPreview_${{ matrix.name }} -fwrapv -lm -lpthread -Wall -m64 -O3
-    - name: Get file structure
-      run: ls -RA
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v2.2.4
       with:
