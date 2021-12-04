@@ -1,0 +1,41 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+       include:
+         - os: "ubuntu-latest"
+           libFolder: "lib"
+           extraFlags: ""
+           name: "linux"
+         - os: "macos-latest"
+           libFolder: "macLib"
+           extraFlags: ""
+           name: "mac"
+         - os: "windows-latest"
+           libFolder: "winLib"
+           extraFlags: "-m64"
+           name: "windows.exe"
+    steps:
+    - uses: actions/checkout@v2
+    - name: Compile
+      run: gcc src/main.c ${{ matrix.libFolder }}/libcubiomes.a -o generateMapPreview_${{ matrix.name }} -fwrapv -lm -lpthread -Wall -m64 -O3
+    - name: Get file structure
+      run: ls -RA
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v2.2.4
+      with:
+        # Artifact name
+        name: generateMapPreview_${{ matrix.name }}
+        # A file, directory or wildcard pattern that describes what to upload
+        path: ./generateMapPreview_${{ matrix.name }}
