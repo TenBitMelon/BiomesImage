@@ -1,8 +1,7 @@
 CC      = gcc
-override CFLAGS += -Wall -fwrapv -lm -lpthread -Wall -m64
+override CFLAGS += -Wall -fwrapv -lm -lpthread -Wall -m64 -std=c99
 
 ifeq ($(OS),Windows_NT)
-	override CFLAGS += 
 	MAKE = mingw32-make
 	RM = del
 else
@@ -25,7 +24,7 @@ generateMapPreview: src/main.c cubiomes/libcubiomes.a
 
 
 cubiomes/libcubiomes.a:
-	cd cubiomes && $(MAKE)
+	cd cubiomes && $(MAKE) CFLAGS+="-m64"
 
 clean:
 	$(RM) generateMapPreview
