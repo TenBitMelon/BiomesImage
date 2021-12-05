@@ -16,8 +16,9 @@ jobs:
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
     steps:
     - uses: actions/checkout@v2
-    - name: Make
-      run: make
+      with:
+        submodules: recursive
+    - run: make
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v2.2.4
       with:
