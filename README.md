@@ -2,7 +2,7 @@
 
 This is a small program that uses the [cubiomes](http://github.com/Cubitect/cubiomes) library to generate a biome map around worldspawn for usage in other programs.
 
-Precompiled Binaries are available under the [releases](http://github.com/melonboy10/BiomesImage/releases) page.
+Precompiled Binaries are available under the [releases](http://github.com/melonboy10/BiomesImage/releases) page or the [actions](https://github.com/melonboy10/BiomesImage/actions) page. 
 
 #### Usage
 
