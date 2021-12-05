@@ -1,6 +1,6 @@
-#include "../include/generator.h"
-#include "../include/util.h"
-#include "../include/finders.h"
+#include "../cubiomes/generator.h"
+#include "../cubiomes/util.h"
+#include "../cubiomes/finders.h"
 #include <stdio.h>
 
 int64_t S64(const char *s) {
@@ -60,12 +60,14 @@ int main(int argc, char **argv)
     biomesToImage(rgb, biomeColors, biomeIds, r.sx, r.sz, 1, 2);
 
     // Print Image RGB Values
+    #ifndef DEBUG
     for(int i=0; i<imgWidth*imgHeight; i++) {
       printf("%d,%d,%d\n", rgb[i*3], rgb[(i*3)+1], rgb[(i*3)+2]);
     }
-
-    // Debug function for saving image to a file
-    // savePPM("biomes_at_layer.ppm", rgb, imgWidth, imgHeight);
+    #else
+    // Save to file instead of printing for debug
+      savePPM("biomes_at_layer.ppm", rgb, imgWidth, imgHeight);
+    #endif
 
     // Clean up.
     free(biomeIds);
